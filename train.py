@@ -11,7 +11,7 @@ vocabSize,vocab,trainingSetWordFormat,trainingSetIndicesFormat=data.createTraini
 
 
 wordEmbeddings=np.identity(vocabSize)
-emn=externalMemoryNetwork.ExternalMemoryNetwork(MBSize, vocabSize, 30, 4, .09)
+emn=externalMemoryNetwork.ExternalMemoryNetwork(MBSize, vocabSize, 30, 4, .01)
 
 for iter in range(totalIts):
     totalCost = 0.
@@ -19,10 +19,11 @@ for iter in range(totalIts):
     totalEgs=0
     for eg in trainingSetIndicesFormat:
         arg1=eg[0]
+        arg2=eg[1]
         target=eg[2]
-        predicted, cost = emn.train(wordEmbeddings[arg1],target)
+        predicted, cost = emn.train(wordEmbeddings[arg1],wordEmbeddings[arg2],arg2,target)
         if int(predicted) == int(target):
             correct+=1
         totalEgs+=1
         totalCost+=cost
-    print "Iter:%d\tCost:%f\tAccuracy:%f "%(iter, cost, correct*1.0/totalEgs)
+    print "Iter:%d\tCost:%f\tAccuracy:%f "%(iter, totalCost, correct*1.0/totalEgs)

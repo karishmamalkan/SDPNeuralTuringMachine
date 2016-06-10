@@ -3,45 +3,46 @@ import string
 from random import shuffle
 import numpy as np
 
-def createTrainingSetAndBuildVocab(filename,vacabSize):
-    vocab = buildVocab(filename,vacabSize)
+def createTrainingSetAndBuildVocab(filename,vocabSize):
+    vocabSize,vocab = buildVocab(filename,vocabSize)
     trainingSetWordFormat,trainingSetIndicesFormat = readData(filename,vocab)
-    return vocab,trainingSetWordFormat,trainingSetIndicesFormat
+    return vocabSize,vocab,trainingSetWordFormat,trainingSetIndicesFormat
 
 def buildVocab(filename,maxWords):
     wordCounter=Counter()
-    counter=0
-    
+    extraSymbols = ['<s>','</s>','UNK']
+    # counter=0
+
     dataFile=open(filename,'r')
     for line in dataFile:
         #ignore new document lines
         if '===' in line:
             continue
-        
+
         [arg,label]=line.rstrip().split('\t')
         #ignore label -1 args for vocab
         if label==-1:
             continue
-        
+
         #update wordCounter with words of this arg
         wordCounter.update(arg.translate(None, string.punctuation).split())
-        
-        #simple break out of loop
-        counter+=1
-        if counter==3:
-            break
-    
+
+        # #simple break out of loop
+        # counter+=1
+        # if counter==3:
+        #     break
+
     dataFile.close()
-    
+
     topWords = wordCounter.most_common(maxWords)
     topWords = [word for (word,count) in topWords]
     shuffle(topWords)
-    topWords = ['<s>','</s>','UNK'] + topWords
+    topWords = extraSymbols + topWords
     wordDict=dict([(word,index) for index,word in enumerate(topWords)])
-    return wordDict
-    
-    
-def getIndices(arg1,wordDict):    
+    return maxWords+len(extraSymbols),wordDict
+
+
+def getIndices(arg1,wordDict):
     indices=[wordDict['<s>']]
     for word in arg1.split():
         if word in wordDict:
@@ -55,6 +56,7 @@ def readData(filename,wordDict):
     trainingSetWordFormat=[]
     trainingSetIndicesFormat=[]
     arg1=None
+    # counter=0
 
     dataFile=open(filename,'r')
     for line in dataFile:
@@ -62,19 +64,23 @@ def readData(filename,wordDict):
         if '===' in line:
             arg1=None
             continue
-            
-        #set current line to arg2 and create new training data point    
+
+        #set current line to arg2 and create new training data point
         [arg2,label]=line.rstrip().split('\t')
-        if arg1!=None:# and label!="-1":
+        if arg1!=None and label!="-1":
             arg1Indices=getIndices(arg1,wordDict)
             arg2Indices=getIndices(arg2,wordDict)
             trainingSetWordFormat.append((arg1,arg2,label))
             trainingSetIndicesFormat.append((arg1Indices,arg2Indices,label))
-        
-        #prepare for next iteration, current arg1=arg2. Future: numbers just get their own token, also can use root word 
+
+        #prepare for next iteration, current arg1=arg2. Future: numbers just get their own token, also can use root word
         arg1=arg2
 
+        # #simple break out of loop
+        # counter+=1
+        # if counter==3:
+        #     break
     dataFile.close()
-        
+
     return trainingSetWordFormat,trainingSetIndicesFormat
 
