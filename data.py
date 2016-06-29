@@ -8,6 +8,11 @@ def createTrainingSetAndBuildVocab(filename,vocabSize):
     trainingSetWordFormat,trainingSetIndicesFormat = readData(filename,vocab)
     return vocabSize,vocab,trainingSetWordFormat,trainingSetIndicesFormat
 
+def createTestSet(filename,vocab):
+    testSetWordFormat,testSetIndicesFormat = readData(filename,vocab)
+    return testSetWordFormat, testSetIndicesFormat
+
+
 def buildVocab(filename,maxWords):
     wordCounter=Counter()
     extraSymbols = ['<s>','</s>','UNK']
