@@ -29,21 +29,17 @@ class ExternalMemoryNetwork:
         Wh1 = self.createParameterMatrix('Wh1', (self.h, self.h), "Uniform")
         Wx1 = self.createParameterMatrix('Wx1', (self.wordEmbeddingSize, self.h),"Uniform")
         b1 = self.createParameterMatrix('b1', (self.h))
-
-        # Wh1 = self.createParameterMatrix('Wh1', (self.h, self.h))
-        # Wx1 = self.createParameterMatrix('Wx1', (self.wordEmbeddingSize, self.h))
         Wh_l = self.createParameterMatrix('Wh_l', (self.h, numLabels))
         bL = self.createParameterMatrix('b_l', (numLabels))
-        # MB = self.createParameterMatrix('MB', (N, self.h))
 
         #init RNN2 shared vars
         Wh2 = self.createParameterMatrix('Wh2', (numLabels, self.h, self.h),"Uniform")
         Wx2 = self.createParameterMatrix('Wx2', (numLabels, self.wordEmbeddingSize, self.h),"Uniform")
         b2 = self.createParameterMatrix('b2', (numLabels, self.h),"Uniform")
-
         WV2 = self.createParameterMatrix('WV2', (numLabels, self.h, vocabSize))
         bV = self.createParameterMatrix('bV', (numLabels, vocabSize))
-        #
+
+
         def RNN1(x, prevH, prevMB,Wh, Wx,b1, erase):
             #calculate next hidden state
             h = theano.tensor.nnet.sigmoid(theano.tensor.dot( prevH,Wh) +b1+ theano.tensor.dot(x, Wx))
@@ -107,8 +103,13 @@ class ExternalMemoryNetwork:
             labelDist,MBState=calcHArg1()
             finalLabelDist1 = -1 * theano.tensor.log(labelDist)
             probArg2Total = calcProbArg2AllLabels(MBState)
-            labels = -1* (probArg2Total +finalLabelDist1)
+            #todo get back
+            labels = -1* (probArg2Total -finalLabelDist1)
             cost = -1 * labels[targetClass]
+
+            #todo remvove
+            # labels = theano.tensor.nnet.softmax(theano.tensor.log(probArg2Total) + theano.tensor.log(labelDist))
+            # cost = -1 * theano.tensor.log(labels[targetClass])
 
             return theano.tensor.argmax(labels),cost
 
@@ -119,9 +120,15 @@ class ExternalMemoryNetwork:
             #todo add so that memory is pooled based on which label is correct
             probArg2Total = calcProbArg2AllLabels(MBState)
 
+            #todo bring back
             logProbabilityOfTargetLabel=    theano.tensor.nnet.softmax(finalLabelDist1 + probArg2Total)[0]
+            # logProbabilityOfTargetLabel=    theano.tensor.nnet.softmax(theano.tensor.log(finalLabelDist1) + theano.tensor.log(probArg2Total))[0]
+
+
             predictedClass = theano.tensor.argmax(logProbabilityOfTargetLabel)
-            cost =theano.tensor.nnet.categorical_crossentropy(logProbabilityOfTargetLabel, oneHotLabel)
+
+            #todo maybe try a different loss
+            cost = theano.tensor.nnet.categorical_crossentropy(logProbabilityOfTargetLabel, oneHotLabel)
             # cost = theano.printing.Print("before")(theano.tensor.nnet.categorical_crossentropy(logProbabilityOfTargetLabel, oneHotLabel))
 
 
@@ -129,8 +136,6 @@ class ExternalMemoryNetwork:
             for param in self.params.values():
                 cost += l2_regularisation * theano.tensor.sqr(param).sum()
                 # cost += theano.printing.Print("after")(l2_regularisation * theano.tensor.sqr(param).sum())
-
-
 
             return cost, predictedClass
 
