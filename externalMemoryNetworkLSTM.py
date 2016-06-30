@@ -11,7 +11,7 @@ class ExternalMemoryNetwork:
         self.h = hidden_dim
         self.wordEmbeddingSize = vocabSize
         self.learningRate = learningRate
-        l2_regularisation = 0.0001
+        l2_regularisation = 0.0001 #todo check why this is giving nans for higher vals
         random_seed=42
         # random number generator
         self.rng = np.random.RandomState(random_seed)
@@ -84,7 +84,9 @@ class ExternalMemoryNetwork:
 
             #find attention over memory based on hidden state
             weightDistribution = theano.tensor.dot(prevMB, theano.tensor.transpose(h))
-            normalizedWeightDistribution = weightDistribution/weightDistribution.sum()
+            #todo bring back
+            # normalizedWeightDistribution = weightDistribution/weightDistribution.sum()
+            normalizedWeightDistribution = theano.tensor.nnet.softmax(weightDistribution)[0]
             normalizedWeightDistribution = normalizedWeightDistribution.reshape((1,normalizedWeightDistribution.shape[0]))
 
             #erase memory block
@@ -147,7 +149,8 @@ class ExternalMemoryNetwork:
             probArg2Total = calcProbArg2AllLabels(MBState)
 
             #todo bring back
-            logProbabilityOfTargetLabel=    theano.tensor.nnet.softmax(finalLabelDist1 + probArg2Total)[0]
+            # logProbabilityOfTargetLabel=    theano.tensor.nnet.softmax(finalLabelDist1 + probArg2Total)[0]
+            logProbabilityOfTargetLabel =  theano.tensor.nnet.softmax(theano.tensor.log(finalLabelDist1) + theano.tensor.log( probArg2Total))[0]
             # logProbabilityOfTargetLabel=    theano.tensor.nnet.softmax(theano.tensor.log(finalLabelDist1) + theano.tensor.log(probArg2Total))[0]
 
 
@@ -155,14 +158,14 @@ class ExternalMemoryNetwork:
 
             #todo maybe try a different loss
             # cost = -1 * theano.tensor.log(logProbabilityOfTargetLabel[targetClass])
+            # cost = theano.printing.Print('Cost - Main')(theano.tensor.nnet.categorical_crossentropy(logProbabilityOfTargetLabel, oneHotLabel))
             cost = theano.tensor.nnet.categorical_crossentropy(logProbabilityOfTargetLabel, oneHotLabel)
-            # cost = theano.printing.Print("before")(theano.tensor.nnet.categorical_crossentropy(logProbabilityOfTargetLabel, oneHotLabel))
 
 
             #todo check reg values if theyre comparable to above loss
             for param in self.params.values():
                 cost += l2_regularisation * theano.tensor.sqr(param).sum()
-                # cost += theano.printing.Print("after")(l2_regularisation * theano.tensor.sqr(param).sum())
+                # cost += theano.printing.Print("Cost - Extra")(l2_regularisation * theano.tensor.sqr(param).sum())
 
             return cost, predictedClass
 
@@ -177,10 +180,10 @@ class ExternalMemoryNetwork:
         updates=getUpdates(cost)
 
         #calculate the update to weights based on the cost function
-        self.train = theano.function([arg1Embeddings, arg2Embeddings, arg2Indices,targetClass, initMB], [predictedClass,cost], updates = updates, allow_input_downcast=True)
+        self.train = theano.function([arg1Embeddings, arg2Embeddings, arg2Indices,oneHotLabel, initMB], [predictedClass,cost], updates = updates, allow_input_downcast=True)
 
         #calculate the cost at the iteration but dont make any updates to the weights
-        self.train_no_update = theano.function([arg1Embeddings, arg2Embeddings, arg2Indices,targetClass, initMB], [predictedClass,cost], allow_input_downcast=True)
+        self.train_no_update = theano.function([arg1Embeddings, arg2Embeddings, arg2Indices,oneHotLabel, initMB], [predictedClass,cost], allow_input_downcast=True)
 
     def createParameterMatrix(self,name,size,type="Normal"):
         if type == "Uniform":
